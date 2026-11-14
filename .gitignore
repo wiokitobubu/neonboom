@@ -15,6 +15,8 @@ android/local.properties
 release/
 *.apk
 *.aab
+# …except the test APK offered for download on the website
+!docs/download/NeonBoom.apk
 
 # Signing keys and secrets: NEVER commit these
 keys/
