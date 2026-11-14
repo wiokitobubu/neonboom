@@ -47,7 +47,7 @@
 
     sfxBus = ctx.createGain(); sfxBus.gain.value = sfxOn ? 1 : 0; sfxBus.connect(master);
 
-    var reverb = ctx.createConvolver(); reverb.buffer = makeImpulse(2.4, 2.6);
+    var reverb = ctx.createConvolver(); reverb.buffer = makeImpulse(1.6, 2.6); // shorter tail: ~1/3 less audio CPU on phones
     reverbIn = ctx.createGain(); reverbIn.gain.value = 0.32;
     reverbIn.connect(reverb); reverb.connect(master);
 

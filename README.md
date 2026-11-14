@@ -41,6 +41,7 @@ www/                   the whole game (Capacitor packages this folder)
   js/ads-config.js     >>> your AdMob IDs and ad settings: the only file to edit for ads <<<
   js/ads.js            banner, interstitial, rewarded ads, consent (simulated in a browser)
   js/native.js         bridge to Android: back button, vibration, splash, links
+  js/perf.js           smoothness: 60 fps cap on 120 Hz screens, automatic quality levels, FPS meter
   js/game.js           the reactor: physics, merging, overload rule, Continue, autosave
   js/render.js         the 11 cores, drawn entirely by code (no image files)
   js/fx.js             particles, shockwaves, flashes, screen shake
@@ -65,6 +66,13 @@ docs/                  website + privacy policy, served by GitHub Pages
 - Interstitial: once every 2 finished runs, never in the first minute, skipped after a rewarded ad.
 - Rewarded: **Continue** at game over (once per run) clears the top of the reactor.
 - Consent: Google's UMP form in the EEA, UK and US states. "Privacy & ad choices" appears in Settings when required.
+
+## Performance
+
+- The game caps itself at 60 fps on 90/120 Hz screens and measures its own frame pacing while you play.
+  If a phone drops frames, it lowers the render resolution and the effects one level (HIGH → MEDIUM → LOW) and remembers it.
+- **Settings → PERFORMANCE MODE** forces the lightest level.
+- **Tap the version number in Settings 5 times** to show a live FPS meter (fps · ms per frame · quality · resolution · screen Hz).
 
 ## Signing keys
 

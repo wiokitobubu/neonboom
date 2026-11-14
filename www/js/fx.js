@@ -7,18 +7,38 @@
 
   var U = NB.util, T = NB.TIERS, TAU = U.TAU;
   var RAINBOW = ['#FF2BD6', '#9B6BFF', '#00F0FF', '#2BFFD0', '#FFD640', '#FF8A2A', '#FFFFFF'];
-  var MAX_PARTS = 700;
+
+  /* Glowing text, drawn ONCE into a small bitmap. A canvas blur (shadowBlur)
+     costs a GPU pass every time it is drawn; a baked bitmap is just copied.
+     o: { size, fill, glow, blur, stroke, strokeW, sheen }; k = pixels per world unit. */
+  NB.bakeText = function (str, o, k) {
+    var pad = Math.ceil((o.blur || 0) + (o.strokeW || 0)) + 4;
+    var c = document.createElement('canvas'), x = c.getContext('2d');
+    var font = '900 ' + o.size + 'px Orbitron, sans-serif';
+    x.font = font;
+    var w = Math.ceil(x.measureText(str).width) + pad * 2, h = Math.ceil(o.size * 1.25) + pad * 2;
+    c.width = Math.max(1, Math.ceil(w * k)); c.height = Math.max(1, Math.ceil(h * k));
+    x.scale(k, k);
+    x.font = font; x.textAlign = 'center'; x.textBaseline = 'middle';
+    if (o.stroke) { x.lineWidth = o.strokeW || 6; x.lineJoin = 'round'; x.strokeStyle = o.stroke; x.strokeText(str, w / 2, h / 2); }
+    if (o.glow) { x.shadowColor = o.glow; x.shadowBlur = (o.blur || 14) * k; }
+    x.fillStyle = o.fill; x.fillText(str, w / 2, h / 2);
+    x.shadowBlur = 0;
+    if (o.sheen) { x.fillStyle = o.sheen; x.fillText(str, w / 2, h / 2); }
+    return { img: c, w: w, h: h, k: k };
+  };
 
   function FX() {
     this.parts = []; this.rings = []; this.texts = []; this.ghosts = []; this.delayed = [];
     this.flashA = 0; this.flashColor = '#FFFFFF';
     this.shakeAmp = 0; this.sx = 0; this.sy = 0;
+    this.k = 1; // canvas pixels per world unit, set by the game
   }
 
   FX.prototype.burst = function (x, y, color, n, speed, size, life, opts) {
     opts = opts || {};
-    var spr = NB.glowDot(color);
-    for (var i = 0; i < n && this.parts.length < MAX_PARTS; i++) {
+    var spr = NB.glowDot(color), max = NB.perf.q().parts;
+    for (var i = 0; i < n && this.parts.length < max; i++) {
       var a = Math.random() * TAU, v = speed * U.rand(0.25, 1);
       this.parts.push({
         x: x + Math.cos(a) * (opts.spread || 0), y: y + Math.sin(a) * (opts.spread || 0),
@@ -124,17 +144,15 @@
 
     if (this.texts.length) {
       ctx.save();
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       for (i = 0; i < this.texts.length; i++) {
         var t = this.texts[i], q = t.life / t.max;
         var pop = q < 0.18 ? U.easeOutBack(q / 0.18) : 1;
-        ctx.globalAlpha = q > 0.65 ? 1 - (q - 0.65) / 0.35 : 1;
-        ctx.font = '900 ' + Math.round(t.size * pop) + 'px Orbitron, sans-serif';
-        var y = t.y - U.easeOutCubic(q) * 70;
-        ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(5,2,16,0.85)'; ctx.strokeText(t.s, t.x, y);
-        ctx.shadowColor = t.color; ctx.shadowBlur = 14;
-        ctx.fillStyle = t.color; ctx.fillText(t.s, t.x, y);
-        ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,255,255,0.38)'; ctx.fillText(t.s, t.x, y);
+        if (!t.b || t.b.k !== this.k) {
+          t.b = NB.bakeText(t.s, { size: t.size, fill: t.color, glow: t.color, blur: 14 / this.k, stroke: 'rgba(5,2,16,0.85)', strokeW: 6, sheen: 'rgba(255,255,255,0.38)' }, this.k);
+        }
+        ctx.globalAlpha = Math.max(0, q > 0.65 ? 1 - (q - 0.65) / 0.35 : 1);
+        var y = t.y - U.easeOutCubic(q) * 70, bw = t.b.w * pop, bh = t.b.h * pop;
+        if (bw > 0.5) ctx.drawImage(t.b.img, t.x - bw / 2, y - bh / 2, bw, bh);
       }
       ctx.restore();
     }

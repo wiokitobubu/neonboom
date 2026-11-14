@@ -85,6 +85,7 @@
         NB.ads.syncVolume();
         NB.audio.play('click');
         if (key === 'haptics') NB.haptic('medium');
+        if (key === 'perf') NB.perf.applySetting();
         sync();
       });
     });
@@ -98,6 +99,12 @@
     name.addEventListener('blur', saveName);
     name.addEventListener('keydown', function (e) { if (e.key === 'Enter') name.blur(); e.stopPropagation(); });
     $('versionText').textContent = NB.VERSION;
+    // hidden FPS meter: tap the version line 5 times
+    var taps = 0, tapT = 0;
+    document.querySelector('.version').addEventListener('click', function () {
+      var now = Date.now(); taps = now - tapT < 600 ? taps + 1 : 1; tapT = now;
+      if (taps >= 5) { taps = 0; ui.toast('<small>DIAGNOSTICS</small><b>FPS METER ' + (NB.perf.toggleMeter() ? 'ON' : 'OFF') + '</b>', { ms: 1400 }); }
+    });
 
     // game events
     NB.bus.on('score', function (d) {
@@ -180,12 +187,14 @@
     ui.open('home', true);
     ui.refreshHome();
     ui.hero.start();
+    NB.perf.freezeBg(false);
     NB.audio.setMode('menu');
   };
   ui.hideHome = function () {
     ui.close('home');
     ui.el.app.classList.remove('is-home'); ui.el.app.classList.add('is-playing');
     ui.hero.stop();
+    NB.perf.freezeBg(true);
   };
   ui.refreshHome = function () {
     var run = NB.store.get('run', null), has = !!(run && run.orbs && (run.orbs.length || run.score));
@@ -199,10 +208,14 @@
   };
 
   /* ---------------- HUD ---------------- */
-  ui.loop = function () {
+  var loopGate = NB.perf.gate(), loopLast = 0;
+  ui.loop = function (t) {
     requestAnimationFrame(ui.loop);
+    if (typeof t !== 'number') t = performance.now();
+    if (!loopGate(t)) return;
+    var step = loopLast ? Math.min(3, (t - loopLast) / 16.67) : 1; loopLast = t;
     var d = ui.scoreTarget - ui.scoreShown;
-    ui.scoreShown = Math.abs(d) < 0.5 ? ui.scoreTarget : ui.scoreShown + d * 0.16;
+    ui.scoreShown = Math.abs(d) < 0.5 ? ui.scoreTarget : ui.scoreShown + d * (1 - Math.pow(0.84, step));
     var v = Math.round(ui.scoreShown);
     if (v !== ui._shown) { ui._shown = v; ui.el.score.textContent = U.fmt(v); }
   };
@@ -361,10 +374,10 @@
     start: function () {
       if (this.running) return;
       this.running = true;
-      var self = this;
+      var self = this, gate = NB.perf.gate();
       (function loop(t) {
         if (!self.running) return;
-        self.draw(t);
+        if (gate(t)) self.draw(t);
         requestAnimationFrame(loop);
       })(performance.now());
     },

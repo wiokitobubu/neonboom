@@ -32,7 +32,10 @@
     this.resetRun();
 
     this.motes = [];
-    for (var i = 0; i < 26; i++) this.motes.push(this.newMote(true));
+    this.setMotes();
+    this.gate = NB.perf.gate(true);
+    this.cdCache = {}; this.beam = {};
+    NB.bus.on('quality', function () { self.setMotes(); self.sprites = null; self.resize(); });
 
     this.buildWalls();
     M.Events.on(this.engine, 'collisionStart', function (e) { self.onPairs(e.pairs); });
@@ -71,7 +74,7 @@
   G.resize = function () {
     var rect = this.stage.getBoundingClientRect();
     if (rect.width < 20 || rect.height < 20) return;
-    var dpr = Math.min(C.MAX_DPR, window.devicePixelRatio || 1);
+    var dpr = NB.perf.res(); // render resolution, set by the quality level
     var cw = Math.round(rect.width * dpr), ch = Math.round(rect.height * dpr);
     if (cw === this.canvas.width && ch === this.canvas.height && this.sprites) return;
     this.dpr = dpr;
@@ -83,7 +86,9 @@
     this.oy = rect.height - H * this.scale - padY; // anchored to the bottom: spare room goes to the top
     var k = dpr * this.scale;
     if (!this.sprites || Math.abs(k - this.sprites.ps) / k > 0.08) this.sprites = new NB.SpriteSet(k);
-    this.k = k;
+    this.k = k; this.fx.k = k;
+    this.cdCache = {}; this.beam = {};
+    this.drawnPaused = false;
     this.buildFrame();
     NB.bus.emit('layout', { scale: this.scale, ox: this.ox, oy: this.oy });
   };
@@ -374,8 +379,9 @@
   };
   G.resume = function () {
     if (this.state !== 'paused') return;
-    this.state = 'playing';
+    this.state = 'playing'; this.drawnPaused = false;
     this.last = performance.now();
+    NB.perf.hold();
     NB.audio.setMode('game');
   };
   G.toIdle = function () { this.state = 'idle'; this.aiming = false; };
@@ -459,6 +465,11 @@
   };
 
   /* ---------------- loop ---------------- */
+  G.setMotes = function () {
+    var n = NB.perf.q().motes;
+    while (this.motes.length > n) this.motes.pop();
+    while (this.motes.length < n) this.motes.push(this.newMote(true));
+  };
   G.newMote = function (anywhere) {
     return {
       x: U.rand(L + 12, R - 12), y: anywhere ? U.rand(C.DANGER_Y, FLOOR) : FLOOR - 4,
@@ -476,7 +487,9 @@
 
   G.frame = function (t) {
     requestAnimationFrame(this._frame);
-    var dt = Math.min(50, Math.max(0, t - this.last));
+    if (!this.gate(t)) return;             // 60 fps cap on 90/120 Hz screens
+    var w0 = performance.now(), raw = t - this.last;
+    var dt = Math.min(50, Math.max(0, raw));
     this.last = t;
     this.timeScale += (this.targetScale - this.timeScale) * Math.min(1, dt / 260);
 
@@ -493,8 +506,15 @@
     if (this.state !== 'paused') { this.fx.update(dt); this.updateMotes(dt); }
     this.aimShown += (this.aimX - this.aimShown) * Math.min(1, dt / 40);
 
-    if (this.state !== 'idle' || this.fx.parts.length || this.fx.rings.length) this.render(t);
+    // paused: one frame is enough, the pause screen covers the rest
+    var still = this.state === 'paused' && this.drawnPaused;
+    if (!still && (this.state !== 'idle' || this.fx.parts.length || this.fx.rings.length)) {
+      this.render(t);
+      this.drawnPaused = this.state === 'paused';
+    }
     if (this.state === 'playing' && this.dirty && t - this.lastSave > C.AUTOSAVE_MS) { this.save(); this.lastSave = t; }
+    NB.perf.sample(raw, this.state === 'playing', performance.now() - w0);
+    NB.perf.count(t);
   };
 
   G.render = function (now) {
@@ -554,15 +574,10 @@
   /* Countdown drawn above the cores so nothing can hide it. */
   G.drawCountdown = function (ctx) {
     if (this.danger <= 0 || this.state !== 'playing') return;
-    var secs = Math.max(0, (C.OVERLOAD_TIME - this.danger) / 1000);
-    ctx.save();
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = '900 34px Orbitron, sans-serif';
-    ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(20,2,10,0.85)';
-    ctx.strokeText(secs.toFixed(1), W / 2, C.DANGER_Y + 46);
-    ctx.shadowColor = '#FF3D6E'; ctx.shadowBlur = 18;
-    ctx.fillStyle = '#FFFFFF'; ctx.fillText(secs.toFixed(1), W / 2, C.DANGER_Y + 46);
-    ctx.restore();
+    var str = Math.max(0, (C.OVERLOAD_TIME - this.danger) / 1000).toFixed(1);
+    var b = this.cdCache[str] || (this.cdCache[str] = NB.bakeText(str,
+      { size: 34, fill: '#FFFFFF', glow: '#FF3D6E', blur: 18 / this.k, stroke: 'rgba(20,2,10,0.85)', strokeW: 7 }, this.k));
+    ctx.drawImage(b.img, W / 2 - b.w / 2, C.DANGER_Y + 46 - b.h / 2, b.w, b.h);
   };
 
   G.drawLauncher = function (ctx, now) {
@@ -589,9 +604,12 @@
       ctx.beginPath(); ctx.ellipse(x, hy, 14 + 3 * Math.sin(now / 150), 5, 0, 0, U.TAU); ctx.stroke();
     }
 
-    // tractor beam
-    var bg = ctx.createLinearGradient(0, ry, 0, C.DROP_Y + r);
-    bg.addColorStop(0, U.rgba(t.color, 0.35)); bg.addColorStop(1, U.rgba(t.color, 0));
+    // tractor beam (one gradient per core type, made once)
+    var bg = this.beam[this.cur];
+    if (!bg) {
+      bg = this.beam[this.cur] = ctx.createLinearGradient(0, ry, 0, C.DROP_Y + r);
+      bg.addColorStop(0, U.rgba(t.color, 0.35)); bg.addColorStop(1, U.rgba(t.color, 0));
+    }
     ctx.globalAlpha = 0.9 * q; ctx.fillStyle = bg;
     ctx.beginPath(); ctx.moveTo(x - 8, ry + 6); ctx.lineTo(x + 8, ry + 6); ctx.lineTo(x + r * 0.9, C.DROP_Y); ctx.lineTo(x - r * 0.9, C.DROP_Y); ctx.closePath(); ctx.fill();
 

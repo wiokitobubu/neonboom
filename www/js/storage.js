@@ -33,7 +33,7 @@
       maxTier: 0,
       discovered: [true].concat(new Array(NB.TIERS.length - 1).fill(false)),
       tutorialDone: false,
-      settings: { sfx: true, music: true, haptics: true },
+      settings: { sfx: true, music: true, haptics: true, perf: false },
       league: { weekId: 0, weekBest: 0, division: 0, lastResult: null }
     };
   }

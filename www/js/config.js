@@ -7,7 +7,7 @@ window.NB = window.NB || {};
 (function (NB) {
   'use strict';
 
-  NB.VERSION = '1.0.0';
+  NB.VERSION = '1.0.1';
 
   NB.CONFIG = {
     WORLD_W: 600,          // physics world width (abstract units)

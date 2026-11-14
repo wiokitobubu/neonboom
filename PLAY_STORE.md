@@ -185,6 +185,7 @@ New personal developer accounts must run a closed test before going public: **at
 | Android Studio doesn't see the phone | Use a data USB cable (not a charge-only one), turn **USB debugging** off and on, and tap **Allow** on the phone. |
 | "App not installed" on the phone | Uninstall the old NEON BOOM first. Copies from Android Studio, the `.apk` and Google Play are signed differently. |
 | Play Console: "Version code 10000 has already been used" | Raise `version` in `package.json` and run `3-build-release.bat` again. |
+| The game feels slow or jerky | Settings → **PERFORMANCE MODE** on. To see the frame rate, tap the version number in Settings 5 times. |
 | No ads appear on the phone | Normal for the first hour with new AdMob IDs. Test ads (`TEST_MODE: true`) should always appear. Check that the phone has internet. |
 | Lost the `keys` folder | Play Console → **Test and release → App integrity → App signing → Request upload key reset**. |
 
