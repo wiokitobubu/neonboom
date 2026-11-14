@@ -54,6 +54,8 @@
     this.score = 0; this.merges = 0; this.drops = 0; this.booms = 0; this.maxTier = 0;
     this.combo = 0; this.lastMergeAt = -1e9; this.bestBeaten = false;
     this.danger = 0; this.near = false;
+    this.revives = 0;                             // rewarded "Continue" used this run
+    this.rec = { games: 0, merges: 0, booms: 0 }; // what this run already added to the profile stats
   };
 
   G.buildWalls = function () {
@@ -307,8 +309,34 @@
     NB.store.del('run');
     NB.bus.emit('gameOver', {
       score: this.score, merges: this.merges, drops: this.drops,
-      maxTier: this.maxTier, booms: this.booms, bestBeaten: this.bestBeaten
+      maxTier: this.maxTier, booms: this.booms, bestBeaten: this.bestBeaten, revives: this.revives
     });
+  };
+
+  /* Rewarded "Continue": a stabilising shockwave wipes every core near the
+     top of the reactor, then the run goes on. */
+  G.revive = function () {
+    if (this.state !== 'over') return false;
+    var self = this, limit = C.DANGER_Y + C.REVIVE_CLEAR, removed = 0;
+    this.orbs.slice().forEach(function (o) {
+      if (o.nb.merging || o.position.y - o.circleRadius >= limit) return;
+      var t = T[o.nb.tier];
+      self.fx.burst(o.position.x, o.position.y, t.color, 14 + o.nb.tier * 2, 0.36, 12, 750, { spread: t.r * 0.6 });
+      self.fx.ring(o.position.x, o.position.y, t.r * 0.6, t.r * 1.9, t.color, 3, 420, 0);
+      self.removeOrb(o); removed++;
+    });
+    this.orbs.forEach(function (o) { o.nb.born = self.clock; o.nb.over = false; });
+    this.revives++;
+    this.danger = 0; this.near = false; this.warnAt = 0; this.combo = 0;
+    this.state = 'playing'; this.targetScale = 1;
+    this.readyAt = this.clock + 650;
+    this.fx.ring(W / 2, limit, 30, W * 0.75, '#2BFFD0', 6, 900, 0);
+    this.fx.flash('#2BFFD0', 0.32); this.fx.shake(8);
+    this.fx.text(W / 2, limit + 70, 'REACTOR STABILISED', '#2BFFD0', 30, 1500);
+    NB.audio.setMode('game'); NB.audio.play('unlock'); NB.haptic('medium');
+    this.dirty = true; this.save();
+    NB.bus.emit('revive', { removed: removed });
+    return true;
   };
 
   /* ---------------- run lifecycle ---------------- */
@@ -357,6 +385,7 @@
     return {
       v: 1, score: this.score, merges: this.merges, drops: this.drops, booms: this.booms,
       maxTier: this.maxTier, cur: this.cur, next: this.next, bestBeaten: this.bestBeaten,
+      rv: this.revives, rec: this.rec,
       orbs: this.orbs.filter(function (o) { return !o.nb.merging; }).map(function (o) {
         return { t: o.nb.tier, x: r2(o.position.x), y: r2(o.position.y), a: r2(o.angle), vx: r2(o.velocity.x), vy: r2(o.velocity.y), av: r2(o.angularVelocity) };
       })
@@ -373,6 +402,8 @@
     this.resetRun();
     this.score = d.score || 0; this.merges = d.merges || 0; this.drops = d.drops || 0;
     this.booms = d.booms || 0; this.maxTier = d.maxTier || 0; this.bestBeaten = !!d.bestBeaten;
+    this.revives = d.rv | 0;
+    if (d.rec) this.rec = { games: d.rec.games | 0, merges: d.rec.merges | 0, booms: d.rec.booms | 0 };
     this.cur = U.clamp(d.cur | 0, 0, 4); this.next = U.clamp(d.next | 0, 0, 4);
     var self = this;
     d.orbs.forEach(function (o) {

@@ -10,11 +10,10 @@
   /* Vibration: Capacitor Haptics on the phone, navigator.vibrate elsewhere. */
   NB.haptic = function (kind) {
     if (!NB.profile.settings.haptics) return;
-    var H = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics;
     var style = kind === 'heavy' ? 'HEAVY' : kind === 'medium' ? 'MEDIUM' : 'LIGHT';
     var ms = kind === 'heavy' ? 40 : kind === 'medium' ? 18 : 8;
     try {
-      if (H && H.impact) H.impact({ style: style });
+      if (NB.native.isNative) NB.native.vibrate(style);
       else if (navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) navigator.vibrate(ms);
     } catch (e) { /* ignore */ }
   };
@@ -51,6 +50,10 @@
     on('btnPauseHome', actions.pauseHome);
     on('btnAgain', actions.again);
     on('btnOverHome', actions.overHome);
+    on('btnContinue', actions.continueRun);
+    on('btnPolicy', function () { NB.native.openUrl(C.PRIVACY_URL); });
+    on('btnAdChoices', function () { NB.ads.privacyOptions(); });
+    NB.bus.on('adsPrivacy', function (req) { $('btnAdChoices').hidden = !req; });
     on('chipLeague', function () { actions.pause(); ui.openLeague(); });
     on('homeLeague', function () { ui.openLeague(); });
     on('homeSettings', function () { ui.open('settings'); });
@@ -79,6 +82,7 @@
         NB.profile.settings[key] = !NB.profile.settings[key];
         NB.saveProfile();
         NB.audio.applySettings(NB.profile.settings);
+        NB.ads.syncVolume();
         NB.audio.play('click');
         if (key === 'haptics') NB.haptic('medium');
         sync();
@@ -158,11 +162,7 @@
     if (top === 'confirm' || top === 'league' || top === 'settings') return ui.close(top);
     if (top === 'pause') return ui.actions.resume();
     if (top === 'over') return ui.actions.overHome();
-    if (top === 'home') {
-      var App = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
-      if (App && App.exitApp) App.exitApp();
-      return;
-    }
+    if (top === 'home') { NB.native.exit(); return; }
     if (ui.game.state === 'playing') ui.actions.pause();
   };
 
@@ -317,7 +317,23 @@
   };
 
   /* ---------------- game over ---------------- */
-  ui.showOver = function (sum, lr) {
+  /* "Continue" button: shown once per run, pulses while the ad loads. */
+  ui.setContinue = function (offer) {
+    var acts = $('overActions'), again = $('btnAgain');
+    $('btnContinue').hidden = !offer;
+    acts.classList.toggle('has-continue', !!offer);
+    again.classList.toggle('btn-primary', !offer);
+    again.classList.toggle('btn-ghost', !!offer);
+    ui.continueBusy(false);
+  };
+  ui.continueBusy = function (on) {
+    var b = $('btnContinue');
+    b.disabled = !!on;
+    b.classList.toggle('loading', !!on);
+  };
+
+  ui.showOver = function (sum, lr, canContinue) {
+    ui.setContinue(canContinue);
     setTimeout(function () {
       $('overBest').textContent = U.fmt(NB.profile.best);
       $('overCore').textContent = T[sum.maxTier].name;

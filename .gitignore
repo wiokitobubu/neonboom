@@ -1,17 +1,23 @@
-# macOS
+# macOS / Windows
 .DS_Store
+Thumbs.db
 
-# Node / Capacitor (Step 5)
+# Node / Capacitor
 node_modules/
 android/app/build/
 android/build/
 android/.gradle/
 android/.idea/
+android/.kotlin/
 android/local.properties
+
+# Build output: the .aab / .apk files made by 3-build-release.bat
+release/
 *.apk
 *.aab
 
 # Signing keys and secrets: NEVER commit these
+keys/
 *.keystore
 *.jks
 keystore.properties

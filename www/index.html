@@ -132,6 +132,9 @@
       </div>
       <div class="over-msg" id="overMsg"></div>
       <div class="panel-actions" id="overActions">
+        <button class="btn btn-reward" id="btnContinue" hidden>
+          <span><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.1v13.8c0 .8.9 1.3 1.6.8l10.3-6.9c.6-.4.6-1.2 0-1.6L9.6 4.3C8.9 3.8 8 4.3 8 5.1z"/></svg>CONTINUE<small>AD</small></span>
+        </button>
         <button class="btn btn-primary" id="btnAgain"><span>PLAY AGAIN</span></button>
         <button class="btn btn-ghost" id="btnOverHome"><span>HOME</span></button>
       </div>
@@ -171,7 +174,11 @@
           <span>PILOT NAME</span>
           <input id="nameInput" maxlength="12" autocomplete="off" spellcheck="false">
         </label>
-        <button class="link-btn" id="btnReset">Reset all progress</button>
+        <div class="links">
+          <button class="link-btn" id="btnAdChoices" hidden>Privacy &amp; ad choices</button>
+          <button class="link-btn" id="btnPolicy">Privacy policy</button>
+          <button class="link-btn" id="btnReset">Reset all progress</button>
+        </div>
         <div class="version">NEON BOOM v<span id="versionText"></span></div>
       </div>
     </div>
@@ -194,14 +201,18 @@
 </div>
 
 <script src="js/vendor/matter.min.js"></script>
+<script src="js/vendor/capacitor.js"></script>
 <script src="js/config.js"></script>
+<script src="js/ads-config.js"></script>
 <script src="js/storage.js"></script>
+<script src="js/native.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/render.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/league.js"></script>
 <script src="js/game.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/ads.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

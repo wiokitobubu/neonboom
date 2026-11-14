@@ -1,0 +1,28 @@
+{
+  "appId": "com.neonboom.game",
+  "appName": "Neon Boom",
+  "webDir": "www",
+  "backgroundColor": "#05030D",
+  "android": {
+    "backgroundColor": "#05030D",
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "hidden": true,
+      "style": "DARK",
+      "insetsHandling": "css",
+      "initialViewportFitValueHint": "cover"
+    },
+    "SplashScreen": {
+      "launchShowDuration": 4000,
+      "launchAutoHide": false,
+      "launchFadeOutDuration": 300,
+      "backgroundColor": "#05030D",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
+    }
+  }
+}

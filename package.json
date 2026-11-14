@@ -1,0 +1,28 @@
+{
+  "name": "neonboom",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NEON BOOM: a neon physics merge puzzle for Android.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "setup": "node tools/android.mjs setup",
+    "sync": "node tools/android.mjs sync",
+    "open": "npx cap open android",
+    "release": "node tools/android.mjs release",
+    "doctor": "node tools/android.mjs doctor"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "8.3.0",
+    "@capacitor/android": "8.6.2",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.2",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/splash-screen": "8.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

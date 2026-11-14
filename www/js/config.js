@@ -26,7 +26,9 @@ window.NB = window.NB || {};
     SPAWN_WEIGHTS: [32, 27, 20, 13, 8], // odds of the 5 droppable tiers
     GRAVITY: 1.7,
     MAX_DPR: 2.5,          // pixel-ratio cap (battery and memory)
-    AUTOSAVE_MS: 1500
+    AUTOSAVE_MS: 1500,
+    REVIVE_CLEAR: 230,     // "Continue" wipes every core whose top is within this band below the line
+    PRIVACY_URL: 'https://wiokitobubu.github.io/neonboom/privacy.html'
   };
 
   /* The evolution chain: 11 energy cores, from Spark to Singularity. */
